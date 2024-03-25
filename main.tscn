@@ -1,11 +1,10 @@
-[gd_scene load_steps=10 format=3 uid="uid://cmd7qt3vf58vm"]
+[gd_scene load_steps=9 format=3 uid="uid://cmd7qt3vf58vm"]
 
 [ext_resource type="Script" path="res://CelestialBodyManager.cs" id="2_7rrpv"]
 [ext_resource type="Script" path="res://Camera.cs" id="2_h3a31"]
 [ext_resource type="Script" path="res://CelestialBodyInstance.cs" id="3_ejorh"]
 [ext_resource type="Script" path="res://CelestialBody.cs" id="4_d42e3"]
 [ext_resource type="Script" path="res://CelestialBodyMesh.cs" id="5_rshc2"]
-[ext_resource type="Script" path="res://LineMesh.cs" id="6_1p0q7"]
 
 [sub_resource type="Environment" id="Environment_yy5sf"]
 
@@ -60,6 +59,3 @@ Body = SubResource("Resource_ons0g")
 
 [node name="BodyMesh" type="MeshInstance3D" parent="CelestialBodyManager/CelestialBody" groups=["CelestialBodies"]]
 mesh = SubResource("ArrayMesh_rlbv4")
-
-[node name="LineMesh" type="MeshInstance3D" parent="CelestialBodyManager/CelestialBody"]
-script = ExtResource("6_1p0q7")
