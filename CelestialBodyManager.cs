@@ -7,41 +7,90 @@ namespace ProceduralPlanets;
 [Tool]
 public partial class CelestialBodyManager : Node
 {
-	[Export] private string GroupName = "CelestialBodies";
-	[Export] private float SimulationSpeed = 1.0f;
-	[Export] private bool IsRunning;
-	[Export] private int PathLength = 10000;
-	
-	private Godot.Collections.Array<CelestialBodyInstance> CelestialBodyInstances { get; set; }
+	[Export] private bool _isRunning;
+	[Export] private string _groupName = "CelestialBodies";
+	[Export] private float _simulationSpeed = 1.0f;
+	[Export] private int _orbitIterations = 10;
 
-	private IEnumerable<CelestialBody> _previousCelestialBodies = [];
+	private Dictionary<CelestialBody, List<Vector3>> _orbitsByBody = [];
 
 	public override void _PhysicsProcess(double delta)
 	{
-		if (!IsRunning) return;
+		float timeStep = (float) delta * _simulationSpeed;
 
-		float timeStep = (float) delta * SimulationSpeed;
-
-		CelestialBodyInstances = new Godot.Collections.Array<CelestialBodyInstance>(GetTree().GetNodesInGroup(GroupName)
+		var celestialBodyInstances = new List<CelestialBodyInstance>(GetTree().GetNodesInGroup(_groupName)
 			.Select(node => (CelestialBodyInstance)node));
 
-		var celestialBodies = CelestialBodyInstances.Select(body => body.Body);
+		List<CelestialBody> celestialBodies = celestialBodyInstances.Select(body => body.Body).ToList();
+		
+		
+		if (_isRunning && !Engine.IsEditorHint())
+		{
+			UpdateBodies(celestialBodies, timeStep);
+		}
 
-		_previousCelestialBodies = celestialBodies;
+		_orbitsByBody = ComputeOrbits(celestialBodies, timeStep);
+		UpdateOrbits(celestialBodyInstances);
 	}
 
-	private static Dictionary<CelestialBody, List<Vector3>> UpdateOrbits(Godot.Collections.Array<CelestialBodyInstance> celestialBodies)
+	private void UpdateOrbits(List<CelestialBodyInstance> celestialBodyInstances)
 	{
-		var clonedBodies = celestialBodies.Duplicate(true);
-		//var dic = keys.Zip(values, (k, v) => new { k, v }).ToDictionary(x => x.k, x => x.v);	
+		foreach (CelestialBodyInstance bodyInstance in celestialBodyInstances)
+		{
+			foreach (Node node in bodyInstance.GetChildren())
+			{
+				if (node is not OrbitDisplay orbitDisplay) continue;
+
+				List<Vector3> orbit = _orbitsByBody[bodyInstance.Body];
+				List<Vector3> relativeOrbit = orbitDisplay.RelativeBodyInstance != null ? _orbitsByBody[orbitDisplay.RelativeBodyInstance.Body] : [];
+				orbitDisplay.UpdateOrbit(orbit, relativeOrbit);
+			}
+		}
 	}
 
-	private static void UpdateBodies(IEnumerable<CelestialBody> celestialBodies, float timeStep)
+	private Dictionary<CelestialBody, List<Vector3>> ComputeOrbits(IReadOnlyList<CelestialBody> celestialBodies, float timeStep)
+	{
+		List<CelestialBody> clonedBodies = celestialBodies.Select(body => new CelestialBody
+		{
+			Mass = body.Mass,
+			Velocity = body.Velocity,
+			Position = body.Position,
+		}).ToList();
+		List<List<Vector3>> orbits = Enumerable.Repeat(new List<Vector3>(), clonedBodies.Count).ToList();
+		var orbitsByBody = new Dictionary<CelestialBody, List<Vector3>>();
+
+		for (var i = 0; i < _orbitIterations; i++)
+		{
+			UpdateBodies(clonedBodies, timeStep);
+			for (var j = 0; j < clonedBodies.Count; j++)
+			{
+				CelestialBody body = clonedBodies[j];
+				orbits[j].Add(body.Position);
+			}
+		}
+
+		for (var i = 0; i < celestialBodies.Count; i++)
+		{
+			CelestialBody body = celestialBodies[i];
+			List<Vector3> orbit = orbits[i];
+			orbitsByBody.Add(body, orbit);
+		}
+
+		for (var i = 0; i < orbits[0].Count; i++)
+		{
+			GD.Print(orbits[0][i]);
+		}
+		return orbitsByBody;
+	}
+
+	private static void UpdateBodies(List<CelestialBody> celestialBodies, float timeStep)
 	{
 		foreach (CelestialBody body in celestialBodies)
 		{
-			body.PropertyChanged += UpdateOrbits;
 			body.UpdateVelocity(celestialBodies, timeStep);
+		}
+		foreach (CelestialBody body in celestialBodies)
+		{
 			body.UpdatePosition(timeStep);
 		}
 	}

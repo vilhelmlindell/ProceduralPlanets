@@ -17,10 +17,6 @@ public partial class CelestialBodyInstance : Node3D
     }
     private CelestialBody _body;
 
-    //public override void _Ready()
-    //{
-    //}
-
     public override void _Process(double delta)
     {
         Position = Body.Position;
